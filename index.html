@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Watch Graphs</title>
+	<link rel="stylesheet" href="main.css">
+	<script  type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+	<script type="text/javascript" src="http://d3js.org/queue.v1.min.js"></script>
+	<link rel="shortcut icon" href="">
+</head>
+<body>
+
+
+<script type = "text/javascript">
+	var w = 800;
+	var h = 450;
+
+	var margin = {
+		top: 60,
+		bottom: 60,
+		left: 40,
+		right: 40
+	};
+
+	var width = w - margin.left - margin.right;
+	var height = h/3;
+
+	var svg = d3.select("body").append("svg")
+				.attr("id", "chart")
+				.attr("width", w)
+				.attr("height", h);
+
+	var chart = svg.append("g")
+				.classed("display", true)
+				.attr("transform", "translate(" + margin.left + "," + margin.top +")");
+
+	queue().defer(d3.json, "watches_2016.json").await(ready);
+
+	month_list = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+
+	function ready(error, watches_2016) {
+		var data2016 = JSON.parse(watches_2016)
+		
+		//default for testing
+		var FIPS = "20035"
+		var year = "2016"
+		var mo = "ALL"
+		var type = "T"
+
+		var plot1 = []
+
+		if (mo == "ALL") {
+			for (i = 0; i < 12; i++) {
+
+				total = data2016[FIPS][month_list[i]]['S'].length + 
+					data2016[FIPS][month_list[i]]['T'].length
+
+				plot1.push({key: month_list[i], value: total})
+
+				//plot1[month_list[i]] = data2016[FIPS][month_list[i]]['S'].length + 
+				//	data2016[FIPS][month_list[i]]['T'].length
+			}
+		}
+
+		var x = d3.scale.ordinal()
+				.domain(plot1.map(function(entry) {
+					return entry.key
+				}))
+				.rangeBands([0,width]);
+
+		var y = d3.scale.linear()
+				.domain([0,d3.max(plot1, function(d){
+					return d.value
+				})])
+				.range([height,0]);
+
+		var linearColorScale = d3.scale.linear()
+							.domain([0,d3.max(plot1, function(d){
+								return d.value;
+							})])
+							.range(["#f7fcfd", "#00441b"]);	
+
+		//enter
+		chart.selectAll(".bar")
+			.data(plot1)
+			.enter()
+				.append("rect")
+				.classed("bar", true)
+
+		//update
+		chart.selectAll(".bar")
+		.attr("x", function(d){
+			return x(d.key)
+		})
+		.attr("y", function(d){
+			return y(d.value);
+		})
+		.attr("width", function(d){	//d represents data to bind, i represents index 									of data
+			return x.rangeBand()/1.5;				//pass width data into x scaling function
+		})
+		.attr("height", function(d) {
+			return height - y(d.value);
+		})
+		.style("fill", function(d){
+			return linearColorScale(d.value);
+		});
+	};
+
+</script>
+
+</body>
