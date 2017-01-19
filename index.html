@@ -34,9 +34,10 @@
 				.classed("display", true)
 				.attr("transform", "translate(" + margin.left + "," + margin.top +")");
 
-	queue().defer(d3.json, "watches_2016.json").await(ready);
+	queue().defer(d3.json, "watches_2016.json").defer(d3.json, "watches_2015.json").await(ready);
 
 	month_list = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+
 
 	//Create initial scales for x, y positions and colors
 	var x = d3.scale.ordinal()
@@ -48,7 +49,7 @@
 
 	//Initial values to try
 	var FIPS = "20035"
-	var year = "2016"
+	var year = "2015"
 	var mo = "ALL"
 	var type = "A"
 
@@ -135,8 +136,18 @@
 
 		linearColorScale.domain([0,d3.max(params.data1, function(d){
 				return d.value;
-			})])
-			.range(["#f7fcfd", "#00441b"]);	
+			})]);
+		
+		//Change colors based on watch type	
+		if (type == "A") {
+			linearColorScale.range(["#f7fcfd", "#00441b"])
+		}
+		else if (type == "T") {
+			linearColorScale.range(["#fff5f0","#67000d"])
+		}
+		else {
+			linearColorScale.range(["#f7fbff","#08306b"])
+		};
 
 		xAxis.scale(x)
 			.orient("bottom");
@@ -194,7 +205,7 @@
 			.attr("y", function(d,i){
 				return y(d.value);
 			})
-			.attr("dx", 0)
+			.attr("dx", -3)
 			.attr("dy", -6)
 			.text(function(d){
 				return d.value;
@@ -214,20 +225,23 @@
 
 	
 
-	function ready(error, watches_2016) {
+	function ready(error, watches_2016, watches_2015) {
 		data2016 = JSON.parse(watches_2016)
+		data2015 = JSON.parse(watches_2015)
 
 		update()
 	};
 
 		//default for testing
 	function update() {	
+
+		var datayear = "data" + year
 		if (mo == "ALL") {
 			if (type == "A") {
 				for (i = 0; i < 12; i++) {
 
-					total = data2016[FIPS][month_list[i]]['S'].length + 
-						data2016[FIPS][month_list[i]]['T'].length
+					total = window[datayear][FIPS][month_list[i]]['S'].length + 
+						window[datayear][FIPS][month_list[i]]['T'].length
 
 					plot1.push({key: month_list[i], value: total})
 
@@ -235,7 +249,7 @@
 			} else {
 				for (i = 0; i < 12; i++) {
 
-					total = data2016[FIPS][month_list[i]][type].length
+					total = window[datayear][FIPS][month_list[i]][type].length
 
 					plot1.push({key: month_list[i], value: total})
 				}
