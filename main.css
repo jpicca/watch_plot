@@ -16,13 +16,18 @@ body,html{
 .bar-label {
 	fill: #000;
 	text-anchor: middle;
-	font-size: 24px;
+	font-size: 15px;
 }
 .axis path,
 .axis line {
 	fill: none;
 	stroke: #000;
 	shape-rendering: crispEdges;
+}
+
+.y.axis text, 
+.y.axis g.tick {
+	display: none;
 }
 
 .gridline path,

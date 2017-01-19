@@ -12,7 +12,7 @@
 
 
 <script type = "text/javascript">
-	var w = 800;
+	var w = 600;
 	var h = 450;
 
 	var margin = {
@@ -23,7 +23,7 @@
 	};
 
 	var width = w - margin.left - margin.right;
-	var height = h/3;
+	var height = h/4;
 
 	var svg = d3.select("body").append("svg")
 				.attr("id", "chart")
@@ -38,74 +38,245 @@
 
 	month_list = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
 
-	function ready(error, watches_2016) {
-		var data2016 = JSON.parse(watches_2016)
-		
-		//default for testing
-		var FIPS = "20035"
-		var year = "2016"
-		var mo = "ALL"
-		var type = "T"
+	//Create initial scales for x, y positions and colors
+	var x = d3.scale.ordinal()
+	var y = d3.scale.linear()
+	var linearColorScale = d3.scale.linear()
+	var xAxis = d3.svg.axis()
+	var yAxis = d3.svg.axis()
+	var yGridlines = d3.svg.axis()
 
-		var plot1 = []
+	//Initial values to try
+	var FIPS = "20035"
+	var year = "2016"
+	var mo = "ALL"
+	var type = "A"
 
-		if (mo == "ALL") {
-			for (i = 0; i < 12; i++) {
+	var plot1 = []
+	var data2016 = ""
+	var initialize = true
 
-				total = data2016[FIPS][month_list[i]]['S'].length + 
-					data2016[FIPS][month_list[i]]['T'].length
+	function drawAxis(params) {
 
-				plot1.push({key: month_list[i], value: total})
+		if(initialize === true){
 
-				//plot1[month_list[i]] = data2016[FIPS][month_list[i]]['S'].length + 
-				//	data2016[FIPS][month_list[i]]['T'].length
-			}
+			//Draw the gridlines
+			//this.append("g")
+			//	.call(params.gridlines)
+			//	.classed("gridline", true)
+			//	.attr("transform", "translate(0,0)")
+
+			//X axis
+			this.append("g")
+				.classed("x axis", true)
+				.attr("transform","translate("+ 0 +"," + height + ")")
+				.call(params.axis.x)
+					.selectAll("text")
+						.classed("x-axis-label", true)
+						.style("text-anchor", "end")
+						.attr("dx", -8)
+						.attr("dy", 8)
+						.attr("transform", "translate(0,0) rotate(-45)");
+
+			//Y axis
+			this.append("g")
+				.classed("y axis", true)
+				.attr("transform","translate(0,0)")
+				.call(params.axis.y)
+
+			//y labels
+			// this.select(".y.axis")
+			// 	.append("text")
+			// 	.attr("x", 0)
+			// 	.attr("y", 0)
+			// 	.style("text-anchor", "middle")
+			// 	.attr("transform", "translate(-35," + height/2 + ") rotate(-90)")
+			// 	.text("Count");
+
+			//x labels
+			this.select(".x.axis")
+				.append("text")
+				.attr("x", 0)
+				.attr("y", 0)
+				.style("text-anchor", "middle")
+				.attr("transform", "translate(" + width/2 + ", 80)")
+				.text("Month")
+
+		} else if(initialize === false) {
+			this.selectAll("g.x.axis")
+				.transition()
+				.duration(500)
+				.call(params.axis.x);
+			this.selectAll(".x-axis-label")
+				.style("text-anchor", "end")
+				.attr("dx", -8)
+				.attr("dy", 8)
+				.attr("transform", "translate(0,0) rotate(-45)");
+			this.selectAll("g.y.axis")
+				.call(params.axis.y);
 		}
 
-		var x = d3.scale.ordinal()
-				.domain(plot1.map(function(entry) {
-					return entry.key
-				}))
-				.rangeBands([0,width]);
+		
 
-		var y = d3.scale.linear()
-				.domain([0,d3.max(plot1, function(d){
-					return d.value
-				})])
-				.range([height,0]);
+	}
 
-		var linearColorScale = d3.scale.linear()
-							.domain([0,d3.max(plot1, function(d){
-								return d.value;
-							})])
-							.range(["#f7fcfd", "#00441b"]);	
+	function plot(params){
+
+		//Update x & y functions for most recent data
+		x.domain(params.data1.map(function(entry) {
+				return entry.key
+			}))
+			.rangeBands([0,width]);
+
+		y.domain([0,d3.max(params.data1, function(d){
+				return d.value
+			})])
+			.range([height,0]);
+
+		linearColorScale.domain([0,d3.max(params.data1, function(d){
+				return d.value;
+			})])
+			.range(["#f7fcfd", "#00441b"]);	
+
+		xAxis.scale(x)
+			.orient("bottom");
+
+		yAxis.scale(y)
+			.orient("left");
+
+		yGridlines.scale(y)
+			.tickSize(-width,0,0)
+			.tickFormat("")
+			.orient("left");
+
+		//Draw axes and axes labels
+		drawAxis.call(this, params)
 
 		//enter
-		chart.selectAll(".bar")
-			.data(plot1)
+		this.selectAll(".bar")
+			.data(params.data1)
 			.enter()
 				.append("rect")
 				.classed("bar", true)
 
+		this.selectAll(".bar-label")
+			.data(params.data1)
+			.enter()
+				.append("text")
+				.classed("bar-label", true);
+
 		//update
-		chart.selectAll(".bar")
-		.attr("x", function(d){
-			return x(d.key)
-		})
-		.attr("y", function(d){
-			return y(d.value);
-		})
-		.attr("width", function(d){	//d represents data to bind, i represents index 									of data
-			return x.rangeBand()/1.5;				//pass width data into x scaling function
-		})
-		.attr("height", function(d) {
-			return height - y(d.value);
-		})
-		.style("fill", function(d){
-			return linearColorScale(d.value);
-		});
+		this.selectAll(".bar")
+			.transition()
+			.duration(500)
+			.attr("x", function(d){
+				return x(d.key)
+			})
+			.attr("y", function(d){
+				return y(d.value);
+			})
+			.attr("width", function(d){	//d represents data to bind, i represents index 									of data
+				return x.rangeBand()/1.5;				//pass width data into x scaling function
+			})
+			.attr("height", function(d) {
+				return height - y(d.value);
+			})
+			.style("fill", function(d){
+				return linearColorScale(d.value);
+			});
+
+		this.selectAll(".bar-label")
+			.transition()
+			.duration(500)
+			.attr("x", function(d,i){
+				return x(d.key) + (x.rangeBand()/2)
+			})
+			.attr("y", function(d,i){
+				return y(d.value);
+			})
+			.attr("dx", 0)
+			.attr("dy", -6)
+			.text(function(d){
+				return d.value;
+			})
+
+		//exit()
+		this.selectAll(".bar")
+			.data(params.data1)
+			.exit()
+			.remove();
+
+		this.selectAll(".bar-label")
+			.data(params.data1)
+			.exit()
+			.remove();
 	};
 
+	
+
+	function ready(error, watches_2016) {
+		data2016 = JSON.parse(watches_2016)
+
+		update()
+	};
+
+		//default for testing
+	function update() {	
+		if (mo == "ALL") {
+			if (type == "A") {
+				for (i = 0; i < 12; i++) {
+
+					total = data2016[FIPS][month_list[i]]['S'].length + 
+						data2016[FIPS][month_list[i]]['T'].length
+
+					plot1.push({key: month_list[i], value: total})
+
+				}
+			} else {
+				for (i = 0; i < 12; i++) {
+
+					total = data2016[FIPS][month_list[i]][type].length
+
+					plot1.push({key: month_list[i], value: total})
+				}
+			}
+			console.log(plot1)
+		}
+
+		plot.call(chart, {
+			data1: plot1,
+			axis: {
+				x: xAxis,
+				y: yAxis
+			},
+			gridlines: yGridlines
+		});
+
+		initialize = false;
+	};
+
+	function new_inputs() {
+		FIPS = String(document.getElementById('FIPS').value);
+		type = String(document.getElementById('type').value);
+        
+        //Clear the array for new count values
+        plot1 =[]
+        update();
+	};
+
+
 </script>
+
+<!-- For testing code -->
+<form>
+	FIPS
+	<input type="text" name="FIPS" value="" id="FIPS" />
+	Type
+	<input type="text" name="type" value="" id="type" />
+	<!--<br />
+	Watch Type
+	<input type="text" name="last_name" value="" maxlength="100" />-->
+	<input type="button" value="Submit" onclick="new_inputs();" />
+</form>
 
 </body>
